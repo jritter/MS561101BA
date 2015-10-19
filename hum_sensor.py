@@ -3,6 +3,7 @@
 
 import smbus
 import time
+import sys
 
 bus = smbus.SMBus(1)
 
@@ -33,14 +34,23 @@ MS561101BA_PROM_REG_SIZE = 2        # size in bytes of a prom registry.
 c = []
 
 def reset_sensor():
-    bus.write_byte(MS561101BA_ADDR_HIGH, MS561101BA_RESET)    
-    time.sleep(0.02)
+    try:
+        bus.write_byte(MS561101BA_ADDR_HIGH, MS561101BA_RESET)    
+        time.sleep(0.02)
+    except IOError:
+        print "Error reading the sensor"
+        sys.exit(1)
+    
 
 def read_prom_params():
-    for i in range(0, MS561101BA_PROM_REG_COUNT + 1):
-        block = bus.read_i2c_block_data(MS561101BA_ADDR_HIGH, 2 * i + MS561101BA_PROM_BASE_ADDR)
-        val = (block[0] << 8) | block[1]
-        c.append(val) 
+    try:
+        for i in range(0, MS561101BA_PROM_REG_COUNT + 1):
+            block = bus.read_i2c_block_data(MS561101BA_ADDR_HIGH, 2 * i + MS561101BA_PROM_BASE_ADDR)
+            val = (block[0] << 8) | block[1]
+            c.append(val) 
+    except IOError:
+        print "Error reading the sensor"
+        sys.exit(1)
 
 def read_raw_temp():
     raw_temperature = 0
@@ -92,7 +102,14 @@ def get_data():
 if __name__ == '__main__':
     reset_sensor() 
     read_prom_params()
-    while True:
-        temperature, pressure = get_data()
-        print "Temperature: {0:.2f} °C\t Pressure: {1:.2f} hPa".format(temperature, pressure)
-        time.sleep(1)
+    try:
+        while True:
+            temperature, pressure = get_data()
+            print "Temperature: {0:.2f} °C\t Pressure: {1:.2f} hPa".format(temperature, pressure)
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print "Bye!"
+        sys.exit(0)
+    except IOError:
+        print "Error reading the sensor"
+        sys.exit(1)
